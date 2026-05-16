@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>学业证书存证系统 - 入口</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 80px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🎓 学业证书去中心化存证系统</h1>
+    <p>请连接钱包以进入系统</p>
+    <button id="connect-btn" onclick="connectAndEnter()">连接钱包</button>
+    <br>
+    <button onclick="window.location.href='verifier.html'" style="background:#eee;">🔍 企业/第三方验证（无需钱包）</button>
+    <p id="status"></p>
+
+    <script>
+        // ⚠️ 换成你最新部署的合约地址
+        const CONTRACT_ADDRESS = "0x28b616F15967943C62429Eff758EB1e5982C9C49";
+
+        // 只需要一个函数获取角色
+        const CONTRACT_ABI = [
+    "function admins(address) view returns (uint8)"
+];
+
+        async function connectAndEnter() {
+    if (!window.ethereum) {
+        alert("请安装MetaMask钱包！");
+        return;
+    }
+    const status = document.getElementById("status");
+    status.innerText = "连接中...";
+
+    try {
+        // 1. 请求账户
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const userAddress = accounts[0];
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+        // 2. 直接用 admins 映射获取角色
+        const result = await contract.admins(userAddress);
+        const role = Number(result);
+        console.log("角色数字:", role);
+
+        // 3. 根据角色跳转 (0=学生, 1=超级管理员, 2=父管理员, 3=子管理员)
+        if (role > 0) {
+            window.location.href = "admin.html";
+        } else {
+            window.location.href = "student.html";
+        }
+    } catch (e) {
+        console.error("连接失败：", e);
+        status.innerText = "连接失败，请检查网络或合约地址";
+        alert("连接失败：" + (e.reason || e.message));
+    }
+}
+    </script>
+</body>
+</html>

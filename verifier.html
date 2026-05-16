@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>证书核验 - 验证方</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: auto; }
+        .section { border: 1px solid #ccc; padding: 15px; margin: 20px; }
+        input { padding: 6px; width: 300px; }
+        button { padding: 8px 16px; cursor: pointer; }
+        canvas { display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 证书真伪验证（无需钱包）</h1>
+    <button onclick="window.location.href='index.html'">⬅ 返回首页</button>
+    <div class="section">
+        <p>输入学生地址查询其证书：</p>
+        <input type="text" id="student-address" placeholder="0x...">
+        <button onclick="verifyByAddress()">查询证书</button>
+        <div id="verify-result">请输入地址</div>
+    </div>
+
+    <script>
+        // ================== 配置区 ==================
+        const CONTRACT_ADDRESS = "0x28b616F15967943C62429Eff758EB1e5982C9C49"; // ⚠️ 替换
+        const INFURA_ID = "7127636f97a94091924038bf5c09d8d9";             // ⚠️ 替换，例如 "2B8yxxxxxxxxxxxxxxxxx"
+        const RPC_URL = `https://sepolia.infura.io/v3/${INFURA_ID}`;
+
+        const CONTRACT_ABI = [
+            "function getCredentialsByAddress(address) view returns (tuple(uint,string,address,uint8,string,string,uint,string,bool,address)[] memory)"
+        ];
+
+        // 初始化 provider 和 contract（无需钱包）
+        const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+        // ================== 查询函数 ==================
+        const origin = "https://euphemism-poker-manly.ngrok-free.dev"; // 替换为你的 ngrok 地址
+        async function verifyByAddress() {
+    const addr = document.getElementById("student-address").value.trim();
+    const el = document.getElementById("verify-result");
+    if (!ethers.utils.isAddress(addr)) {
+        el.innerHTML = "请输入有效的以太坊地址";
+        return;
+    }
+    el.innerHTML = "查询中...";
+    try {
+        const creds = await contract.getCredentialsByAddress(addr);
+        if (creds.length === 0) {
+            el.innerHTML = "该地址暂无存证证书";
+            return;
+        }
+        let html = "";
+        const certTypes = ['毕业证','学位证','成绩单','竞赛','其他'];
+        for (let i = 0; i < creds.length; i++) {
+            const c = creds[i];
+            const certType = certTypes[c[3]];
+            const issueDate = new Date(c[6] * 1000).toLocaleDateString();
+            const valid = c[8] ? '✅有效' : '❌已撤销';
+            let certLink = '';
+            if (c[7] && c[7] !== '') {
+                const ipfsUrl = c[7].replace('ipfs://', 'https://ipfs.io/ipfs/');
+                certLink = ` <a href="${ipfsUrl}" target="_blank">查看原件</a>`;
+            }
+            html += `
+                <div style="margin:10px; padding:10px; border:1px solid #ddd;">
+                    <div><b>证书ID:</b> ${c[0]} | <b>学号:</b> ${c[1]} | <b>类型:</b> ${certType} | <b>机构:</b> ${c[4]} | <b>日期:</b> ${issueDate} | ${valid} ${certLink}</div>
+                    <img id="qr-${i}" style="width:100px; height:100px;" alt="二维码">
+                </div>`;
+        }
+        el.innerHTML = html;
+
+        // 设置二维码图片地址
+        for (let i = 0; i < creds.length; i++) {
+            const c = creds[i];
+            const shareUrl = `${origin}/certificate.html?id=${c[0]}&student=${c[2]}`;
+            const qrImg = document.getElementById(`qr-${i}`);
+            if (qrImg) {
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shareUrl)}`;
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        el.innerHTML = "查询失败，请检查网络或合约地址";
+    }
+}
+    </script>
+</body>
+</html>

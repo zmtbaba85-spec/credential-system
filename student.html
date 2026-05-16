@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的证书 - 学生端</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: auto; }
+        .section { border: 1px solid #ccc; padding: 15px; margin: 20px 0; }
+        button { padding: 8px 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🎓 我的学业证书</h1>
+    <button onclick="window.location.href='index.html'">⬅ 返回首页</button>
+    <p>学生地址：<span id="student-address">未连接</span></p>
+
+    <div class="section">
+        <h3>我的证书列表</h3>
+        <button onclick="loadMyCredentials()">刷新</button>
+        <div id="my-credentials">请先连接钱包</div>
+    </div>
+    <script>
+        let provider, signer, contract;
+        const CONTRACT_ADDRESS = "0x28b616F15967943C62429Eff758EB1e5982C9C49";
+        const CONTRACT_ABI = [
+            "function getMyCredentials() view returns (tuple(uint,string,address,uint8,string,string,uint,string,bool)[] memory)"
+        ];
+
+        async function init() {
+    if (!window.ethereum) {
+        alert("请安装MetaMask并返回首页连接钱包");
+        return;
+    }
+    try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length === 0) {
+            alert("未检测到钱包，请返回首页连接");
+            window.location.href = "index.html";
+            return;
+        }
+        userAddress = accounts[0];
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        document.getElementById("student-address").innerText = userAddress;
+        await loadMyCredentials();
+    } catch (e) {
+        console.error(e);
+        alert("初始化失败");
+    }
+}
+
+window.addEventListener('load', init);
+
+
+        async function connectWallet() {
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            document.getElementById("student-address").innerText = await signer.getAddress();
+            loadMyCredentials();
+        }
+        
+        const origin = "https://euphemism-poker-manly.ngrok-free.dev"; // 替换为你的 ngrok 地址
+        async function loadMyCredentials() {
+    const el = document.getElementById("my-credentials");
+    if (!contract) { el.innerHTML = "请先连接"; return; }
+    el.innerHTML = "加载中...";
+    try {
+        const creds = await contract.getMyCredentials();
+        if (creds.length === 0) { el.innerHTML = "你还没有存证的证书"; return; }
+        let html = "";
+        creds.forEach(c => {
+            const certType = ['毕业证','学位证','成绩单','竞赛','其他'][c[3]];
+            const issueDate = new Date(c[6] * 1000).toLocaleDateString();
+            const valid = c[8] ? '✅有效' : '❌已撤销';
+            let certLink = '';
+            if (c[7] && c[7] !== '') {
+                const ipfsUrl = c[7].replace('ipfs://', 'https://ipfs.io/ipfs/');
+                certLink = ` <a href="${ipfsUrl}" target="_blank">查看原件</a>`;
+            }
+            const basePath = window.location.pathname.includes('/fronted/') ? '/fronted/' : '/';
+            const shareLink = `${origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
+            console.log("生成的链接:", shareLink);
+            const shareBtn = `<button onclick="navigator.clipboard.writeText('${shareLink}').then(()=>alert('链接已复制！'))">复制分享链接</button>`;
+            html += `<div>证书ID:${c[0]} | 类型:${certType} | 机构:${c[4]} | 日期:${issueDate} | ${valid} ${certLink} ${shareBtn}</div>`;
+        });
+        el.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        el.innerHTML = "加载失败";
+    }
+}
+
+    </script>
+</body>
+</html>

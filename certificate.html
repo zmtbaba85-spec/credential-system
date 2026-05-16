@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>证书详情</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        button { padding: 8px 16px; cursor: pointer; }
+        .detail { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>📜 学业证书详情</h1>
+    <div id="cert-info">加载中...</div>
+    <br>
+    <button onclick="window.location.href='index.html'">⬅ 返回首页</button>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x28b616F15967943C62429Eff758EB1e5982C9C49"; // ⚠️ 替换
+        const CONTRACT_ABI = [
+            "function getCredentialById(uint _id) view returns (tuple(uint,string,address,uint8,string,string,uint,string,bool,address))"
+        ];
+
+        async function loadCert() {
+    // 手动解析 URL 参数，避免 URLSearchParams 兼容问题
+    const queryString = window.location.search.substring(1);
+    const pairs = queryString.split('&');
+    const params = {};
+    pairs.forEach(p => {
+        const [key, val] = p.split('=');
+        if (key) params[key] = decodeURIComponent(val || '');
+    });
+    const id = params.id;
+    const student = params.student;
+    console.log("接收到的参数 - id:", id, "student:", student);
+
+    if (!id || !student) {
+        document.getElementById("cert-info").innerText = "参数错误：缺少id或student";
+        return;
+    }
+
+    const provider = new ethers.providers.JsonRpcProvider("https://sepolia.infura.io/v3/7127636f97a94091924038bf5c09d8d9");
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+    try {
+        const c = await contract.getCredentialById(id);
+        if (c[2].toLowerCase() !== student.toLowerCase()) {
+            document.getElementById("cert-info").innerText = "该证书不属于此学生";
+            return;
+        }
+        const certTypes = ['毕业证','学位证','成绩单','竞赛','其他'];
+        const html = `
+            <div class="detail"><b>证书ID：</b>${c[0]}</div>
+            <div class="detail"><b>学号：</b>${c[1]}</div>
+            <div class="detail"><b>学生地址：</b>${c[2]}</div>
+            <div class="detail"><b>证书类型：</b>${certTypes[c[3]]}</div>
+            <div class="detail"><b>签发机构：</b>${c[4]}</div>
+            <div class="detail"><b>专业：</b>${c[5]}</div>
+            <div class="detail"><b>签发日期：</b>${new Date(c[6] * 1000).toLocaleDateString()}</div>
+            <div class="detail"><b>状态：</b>${c[8] ? '✅有效' : '❌已撤销'}</div>
+            ${c[7] ? `<div class="detail"><b>附件：</b><a href="${c[7].replace('ipfs://','https://ipfs.io/ipfs/')}" target="_blank">查看原件</a></div>` : ''}
+        `;
+        document.getElementById("cert-info").innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        document.getElementById("cert-info").innerText = "加载失败，请检查证书ID或网络连接";
+    }
+}
+
+        window.addEventListener('load', loadCert);
+    </script>
+</body>
+</html>
