@@ -87,6 +87,13 @@
     <div id="admin-list" style="margin-top:10px;"></div>
 </div>
 
+<!-- 审计日志 -->
+<div class="section">
+    <h3>📋 操作审计日志</h3>
+    <button id="load-audit-btn" onclick="loadAuditLog()">加载最近操作记录</button>
+    <div id="audit-log">点击按钮加载</div>
+</div>
+
 
 
     <script>
@@ -429,6 +436,130 @@ async function loadAdminList() {
     }
 }
 
+// ================== 审计日志 ==================
+async function loadAuditLog() {
+    const el = document.getElementById("audit-log");
+    if (!contract) { el.innerHTML = "请先连接钱包"; return; }
+    const btn = document.getElementById("load-audit-btn");
+    btn.disabled = true;
+    btn.innerText = "加载中...";
+    el.innerHTML = "正在查询链上事件...";
+
+    try {
+        // 计算事件签名哈希
+        const topicIssued = ethers.utils.id("CredentialIssued(uint256,address,uint8,uint256)");
+        const topicRevoked = ethers.utils.id("CredentialRevoked(uint256)");
+        const topicAdminAdded = ethers.utils.id("AdminAdded(address,uint8)");
+        const topicAdminRemoved = ethers.utils.id("AdminRemoved(address)");
+
+        const currentBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(currentBlock - 5000, 0);
+
+        const logs = await provider.getLogs({
+            fromBlock,
+            toBlock: currentBlock,
+            address: CONTRACT_ADDRESS,
+            topics: [ [topicIssued, topicRevoked, topicAdminAdded, topicAdminRemoved] ]
+        });
+
+        if (logs.length === 0) {
+            el.innerHTML = "暂无操作记录";
+            btn.disabled = false;
+            btn.innerText = "加载最近操作记录";
+            return;
+        }
+
+        // 解码事件
+        const events = logs.map(log => {
+            const topic = log.topics[0];
+            if (topic === topicIssued) {
+                // 索引参数: id (topics[1]), student (topics[2])，非索引参数: certType (uint8), timestamp (uint256) 在 data 中
+                const decodedData = ethers.utils.defaultAbiCoder.decode(
+                    ["uint8", "uint256"],
+                    log.data
+                );
+                return {
+                    type: '证书签发',
+                    blockNumber: log.blockNumber,
+                    transactionHash: log.transactionHash,
+                    student: ethers.utils.getAddress(log.topics[2].slice(26)), // 提取 address
+                    certId: ethers.BigNumber.from(log.topics[1]).toString(),
+                    certType: decodedData[0],
+                    timestamp: decodedData[1].toNumber()
+                };
+            } else if (topic === topicRevoked) {
+                // 索引参数: id (topics[1])
+                return {
+                    type: '证书撤销',
+                    blockNumber: log.blockNumber,
+                    transactionHash: log.transactionHash,
+                    certId: ethers.BigNumber.from(log.topics[1]).toString()
+                };
+            } else if (topic === topicAdminAdded) {
+                // 索引参数: addr (topics[1])，非索引参数: role (uint8) 在 data 中
+                const decodedData = ethers.utils.defaultAbiCoder.decode(
+                    ["uint8"],
+                    log.data
+                );
+                return {
+                    type: '添加管理员',
+                    blockNumber: log.blockNumber,
+                    transactionHash: log.transactionHash,
+                    addr: ethers.utils.getAddress(log.topics[1].slice(26)),
+                    role: decodedData[0]
+                };
+            } else if (topic === topicAdminRemoved) {
+                // 索引参数: addr (topics[1])，无 data
+                return {
+                    type: '移除管理员',
+                    blockNumber: log.blockNumber,
+                    transactionHash: log.transactionHash,
+                    addr: ethers.utils.getAddress(log.topics[1].slice(26))
+                };
+            }
+        }).filter(Boolean); // 去除 undefined
+
+        events.sort((a, b) => a.blockNumber - b.blockNumber);
+
+        // 渲染表格
+        let html = `<table border="1" cellpadding="6" style="border-collapse: collapse; width: 100%; font-size: 14px;">
+            <tr style="background: #f0f0f0;">
+                <th>区块</th>
+                <th>类型</th>
+                <th>详情</th>
+                <th>交易</th>
+            </tr>`;
+
+        for (const ev of events) {
+            let detail = '';
+            if (ev.type === '证书签发') {
+                detail = `学生: ${ev.student?.slice(0,10)}...，证书ID: ${ev.certId}`;
+            } else if (ev.type === '证书撤销') {
+                detail = `证书ID: ${ev.certId}`;
+            } else if (ev.type === '添加管理员') {
+                const roleMap = { 1: '超级管理员', 2: '父管理员', 3: '子管理员' };
+                detail = `地址: ${ev.addr?.slice(0,10)}...，角色: ${roleMap[ev.role] || ev.role}`;
+            } else if (ev.type === '移除管理员') {
+                detail = `地址: ${ev.addr?.slice(0,10)}...`;
+            }
+
+            html += `<tr>
+                <td>${ev.blockNumber}</td>
+                <td>${ev.type}</td>
+                <td>${detail}</td>
+                <td><a href="https://sepolia.etherscan.io/tx/${ev.transactionHash}" target="_blank">查看</a></td>
+            </tr>`;
+        }
+        html += '</table>';
+        el.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        el.innerHTML = "加载失败：" + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "加载最近操作记录";
+    }
+}
 // 加载当前所有管理员（简单展示）
 async function batchIssueCredentials() {
     const raw = document.getElementById("batch-input").value.trim();
