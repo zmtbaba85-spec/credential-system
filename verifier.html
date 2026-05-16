@@ -37,57 +37,50 @@
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
         // ================== 查询函数 ==================
-        async function verifyByAddress() {
-            const addr = document.getElementById("student-address").value.trim();
-            const el = document.getElementById("verify-result");
-            if (!ethers.utils.isAddress(addr)) {
-                el.innerHTML = "请输入有效的以太坊地址";
-                return;
-            }
-            el.innerHTML = "查询中...";
-            try {
-                const creds = await contract.getCredentialsByAddress(addr);
-                if (creds.length === 0) {
-                    el.innerHTML = "该地址暂无存证证书";
-                    return;
-                }
-                let html = "";
-                const certTypes = ['毕业证','学位证','成绩单','竞赛','其他'];
-                for (let i = 0; i < creds.length; i++) {
-                    const c = creds[i];
-                    const certType = certTypes[c[3]];
-                    const issueDate = new Date(c[6] * 1000).toLocaleDateString();
-                    const valid = c[8] ? '✅有效' : '❌已撤销';
-                    let certLink = '';
-                    if (c[7] && c[7] !== '') {
-                        const ipfsUrl = c[7].replace('ipfs://', 'https://ipfs.io/ipfs/');
-                        certLink = ` <a href="${ipfsUrl}" target="_blank">查看原件</a>`;
-                    }
-                    // 使用 window.location.origin，部署后自动变为 GitHub Pages 域名
-                    const basePath = window.location.pathname.includes('/credential-system/') ? '/credential-system/' : '/';
-const shareUrl = `${window.location.origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
-                    html += `
-                        <div style="margin:10px; padding:10px; border:1px solid #ddd;">
-                            <div><b>证书ID:</b> ${c[0]} | <b>学号:</b> ${c[1]} | <b>类型:</b> ${certType} | <b>机构:</b> ${c[4]} | <b>日期:</b> ${issueDate} | ${valid} ${certLink}</div>
-                            <img id="qr-${i}" style="width:100px; height:100px;" alt="二维码">
-                        </div>`;
-                }
-                el.innerHTML = html;
+        try {
+    const creds = await contract.getCredentialsByAddress(addr);
+    if (creds.length === 0) {
+        el.innerHTML = "该地址暂无存证证书";
+        return;
+    }
+    let html = "";
+    const certTypes = ['毕业证','学位证','成绩单','竞赛','其他'];
+    
+    // ✅ 将 basePath 定义移到这里（两个循环之外）
+    const basePath = window.location.pathname.includes('/credential-system/') ? '/credential-system/' : '/';
 
-                // 设置二维码图片地址（使用在线 API，无需本地库）
-                for (let i = 0; i < creds.length; i++) {
-                    const c = creds[i];
-                    const shareUrl = `${window.location.origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
-                    const qrImg = document.getElementById(`qr-${i}`);
-                    if (qrImg) {
-                        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shareUrl)}`;
-                    }
-                }
-            } catch (e) {
-                console.error(e);
-                el.innerHTML = "查询失败，请检查网络或合约地址";
-            }
+    for (let i = 0; i < creds.length; i++) {
+        const c = creds[i];
+        const certType = certTypes[c[3]];
+        const issueDate = new Date(c[6] * 1000).toLocaleDateString();
+        const valid = c[8] ? '✅有效' : '❌已撤销';
+        let certLink = '';
+        if (c[7] && c[7] !== '') {
+            const ipfsUrl = c[7].replace('ipfs://', 'https://ipfs.io/ipfs/');
+            certLink = ` <a href="${ipfsUrl}" target="_blank">查看原件</a>`;
         }
+        const shareUrl = `${window.location.origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
+        html += `
+            <div style="margin:10px; padding:10px; border:1px solid #ddd;">
+                <div><b>证书ID:</b> ${c[0]} | <b>学号:</b> ${c[1]} | <b>类型:</b> ${certType} | <b>机构:</b> ${c[4]} | <b>日期:</b> ${issueDate} | ${valid} ${certLink}</div>
+                <img id="qr-${i}" style="width:100px; height:100px;" alt="二维码">
+            </div>`;
+    }
+    el.innerHTML = html;
+
+    // 设置二维码图片地址
+    for (let i = 0; i < creds.length; i++) {
+        const c = creds[i];
+        const shareUrl = `${window.location.origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
+        const qrImg = document.getElementById(`qr-${i}`);
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shareUrl)}`;
+        }
+    }
+} catch (e) {
+    console.error(e);
+    el.innerHTML = "查询失败，请检查网络或合约地址";
+}
     </script>
 </body>
 </html>
