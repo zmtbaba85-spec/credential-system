@@ -38,7 +38,7 @@
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
         // ================== 查询函数 ==================
-        const origin = "https://euphemism-poker-manly.ngrok-free.dev"; // 替换为你的 ngrok 地址
+        //const origin = "https://euphemism-poker-manly.ngrok-free.dev"; // 替换为你的 ngrok 地址
         async function verifyByAddress() {
     const addr = document.getElementById("student-address").value.trim();
     const el = document.getElementById("verify-result");
@@ -76,7 +76,7 @@
         // 设置二维码图片地址
         for (let i = 0; i < creds.length; i++) {
             const c = creds[i];
-            const shareUrl = `${origin}/certificate.html?id=${c[0]}&student=${c[2]}`;
+            const shareUrl = `${window.location.origin}/certificate.html?id=${c[0]}&student=${c[2]}`;
             const qrImg = document.getElementById(`qr-${i}`);
             if (qrImg) {
                 qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shareUrl)}`;
