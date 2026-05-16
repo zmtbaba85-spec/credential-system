@@ -64,7 +64,8 @@
                         certLink = ` <a href="${ipfsUrl}" target="_blank">查看原件</a>`;
                     }
                     // 使用 window.location.origin，部署后自动变为 GitHub Pages 域名
-                    const shareUrl = `${window.location.origin}/certificate.html?id=${c[0]}&student=${c[2]}`;
+                    const basePath = window.location.pathname.includes('/credential-system/') ? '/credential-system/' : '/';
+const shareUrl = `${window.location.origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
                     html += `
                         <div style="margin:10px; padding:10px; border:1px solid #ddd;">
                             <div><b>证书ID:</b> ${c[0]} | <b>学号:</b> ${c[1]} | <b>类型:</b> ${certType} | <b>机构:</b> ${c[4]} | <b>日期:</b> ${issueDate} | ${valid} ${certLink}</div>
@@ -76,7 +77,7 @@
                 // 设置二维码图片地址（使用在线 API，无需本地库）
                 for (let i = 0; i < creds.length; i++) {
                     const c = creds[i];
-                    const shareUrl = `${window.location.origin}/certificate.html?id=${c[0]}&student=${c[2]}`;
+                    const shareUrl = `${window.location.origin}${basePath}certificate.html?id=${c[0]}&student=${c[2]}`;
                     const qrImg = document.getElementById(`qr-${i}`);
                     if (qrImg) {
                         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shareUrl)}`;
