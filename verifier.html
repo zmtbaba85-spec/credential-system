@@ -3,24 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <title>证书核验 - 验证方</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Ethers.js -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: auto; }
-        .section { border: 1px solid #ccc; padding: 15px; margin: 20px; }
-        input { padding: 6px; width: 300px; }
-        button { padding: 8px 16px; cursor: pointer; }
-        img { display: block; margin-top: 10px; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .cert-result-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 5px solid #28a745;
+            transition: all 0.3s ease;
+        }
+        .cert-result-card.revoked {
+            border-left-color: #dc3545;
+            opacity: 0.7;
+        }
+        .cert-result-card:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .badge-valid {
+            background: #28a745;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        .badge-revoked {
+            background: #dc3545;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        .qr-code-img {
+            width: 120px;
+            height: 120px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 5px;
+            background: white;
+        }
+        .attachment-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .attachment-link:hover {
+            text-decoration: underline;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
-    <h1>🔍 证书真伪验证（无需钱包）</h1>
-    <button onclick="window.location.href='index.html'">⬅ 返回首页</button>
-    <div class="section">
-        <p>输入学生地址查询其证书：</p>
-        <input type="text" id="student-address" placeholder="0x...">
-        <button onclick="verifyByAddress()">查询证书</button>
-        <div id="verify-result">请输入地址</div>
+
+<div class="main-container">
+    <!-- 头部 -->
+    <div class="header-row">
+        <h1 class="h3 mb-0">🔍 证书真伪验证</h1>
+        <button class="btn btn-outline-secondary" onclick="window.location.href='index.html'">⬅ 返回首页</button>
     </div>
+    
+    <!-- 说明 -->
+    <div class="alert alert-info">
+        <strong>无需钱包 · 公开验证</strong>：输入任意学生钱包地址，即可查看其所有已存证的证书，并可通过二维码扫码验证真伪。
+    </div>
+
+    <!-- 查询区域 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-8">
+                    <input type="text" class="form-control" id="student-address" placeholder="请输入学生钱包地址，例如 0x...">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary w-100" onclick="verifyByAddress()">🔎 查询证书</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查询结果 -->
+    <div id="verify-result">
+        <div class="text-center text-muted py-4">
+            <div>📭</div>
+            <p>请输入学生地址进行查询</p>
+        </div>
+    </div>
+</div>
 
     <script>
         // ================== 配置区 ==================
